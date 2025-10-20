@@ -1,2 +1,4 @@
 flights
 venv
+__pycache__
+*.pyc
