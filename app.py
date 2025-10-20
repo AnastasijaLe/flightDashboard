@@ -125,7 +125,7 @@ elif section == "Flights":
     with col2:
         status_filter = st.selectbox("Status", ["All", "Scheduled", "Boarding", "In Flight", "Landed", "Delayed", "Cancelled"])
     with col3:
-        airport_filter = st.selectbox("Airport", ["All"] + list(safe_query(lambda: [airport.code for airport in Airport.objects.all()], [])))
+        airport_filter = st.selectbox("Airport", ["All"] + list(safe_query(lambda: [airport.city for airport in Airport.objects.all()], [])))
     
     def get_flights_data():
         flights = Flight.objects.filter(departure_time__date=date_filter)
