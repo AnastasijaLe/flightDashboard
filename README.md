@@ -22,7 +22,7 @@ Ja pygraphviz vai pydorplus ir ielādēts
 python manage.py graph_models -a -o myapp_models.png
 ```
 
-Bet ja nav tad vajag izmantot lai izveidotu dot failu un pārveidotu
+Bet ja nav, vajag izveidot dot failu un pārveidot to
 ```
 python manage.py graph_models -a --dot -o myapp_models.dot
 dot -Tpng myapp_models.dot -omyapp_models.png
