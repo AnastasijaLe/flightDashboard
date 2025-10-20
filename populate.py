@@ -130,7 +130,7 @@ def create_airlines():
 def create_routes(airports):
  
     routes = []
-    for _ in range(30):
+    for _ in range(240):
         departure = random.choice(airports)
         arrival = random.choice(airports)
         while arrival == departure:
@@ -148,7 +148,7 @@ def create_routes(airports):
 def create_pilots(airlines):
     
     pilots = []
-    for _ in range(10):
+    for _ in range(100):
         pilot = Pilot.objects.create(
             name=fake.first_name_male() if random.choice([True, False]) else fake.first_name_female(),
             surname=fake.last_name(),
@@ -211,16 +211,14 @@ def create_aircraft(airlines):
     return aircraft_list
 
 def create_flights(airlines, routes, aircraft_list):
-    """Create 50 flights with realistic dates, times and logical statuses"""
-    print("Creating flights...")
     
     flights = []
-    for i in range(50):
+    for i in range(1000):
         airline = random.choice(airlines)
         route = random.choice(routes)
         aircraft = random.choice([a for a in aircraft_list if a.airline == airline] + [None])
         
-        base_time = fake.date_time_between(start_date='-30d', end_date='+30d')
+        base_time = fake.date_time_between(start_date='-5d', end_date='+5d')
         flight_duration = timedelta(hours=random.randint(1, 14))
         arrival_time = base_time + flight_duration
         
@@ -289,7 +287,7 @@ def create_flights(airlines, routes, aircraft_list):
 
 def create_passengers():
     passengers = []
-    for _ in range(100):
+    for _ in range(10000):
         passenger = Passenger.objects.create(
             first_name=fake.first_name(),
             last_name=fake.last_name(),
@@ -305,7 +303,7 @@ def create_tickets(passengers, flights):
     seats = [f"{row}{seat}" for row in range(1, 33) for seat in ['A', 'B', 'C', 'D', 'E', 'F']]
     
     tickets = []
-    for _ in range(200):
+    for _ in range(20000):
         passenger = random.choice(passengers)
         flight = random.choice(flights)
         
