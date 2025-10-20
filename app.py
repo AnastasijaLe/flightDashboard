@@ -115,5 +115,47 @@ if section == "Overview":
             fig = px.bar(airline_data.nlargest(10, 'flights'), x='airline', y='flights')
             st.plotly_chart(fig, use_container_width=True)
 
+# Flights Section
+elif section == "Flights":
+    st.header("🛫 Flight Operations")
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        date_filter = st.date_input("Select Date", datetime.now().date())
+    with col2:
+        status_filter = st.selectbox("Status", ["All", "Scheduled", "Boarding", "In Flight", "Landed", "Delayed", "Cancelled"])
+    with col3:
+        airport_filter = st.selectbox("Airport", ["All"] + list(safe_query(lambda: [airport.code for airport in Airport.objects.all()], [])))
+    
+    def get_flights_data():
+        flights = Flight.objects.filter(departure_time__date=date_filter)
+        if status_filter != "All":
+            flights = flights.filter(status=status_filter)
+        if airport_filter != "All":
+            flights = flights.filter(route__departure_airport__code=airport_filter) | flights.filter(route__arrival_airport__code=airport_filter)
+        
+        data = []
+        for flight in flights:
+            departure_time = flight.departure_time.strftime("%H:%M") if flight.departure_time else "N/A"
+            arrival_time = flight.arrival_time.strftime("%H:%M") if flight.arrival_time else "N/A"
+            data.append({
+                'flight_number': flight.flight_number,
+                'airline': flight.airline.name,
+                'route': f"{flight.route.departure_airport.code} → {flight.route.arrival_airport.code}",
+                'departure_airport': f"{flight.route.departure_airport.country}",
+                'arrival_airport':  f"{flight.route.arrival_airport.country}",
+                'departure': departure_time,
+                'arrival': arrival_time,
+                'status': flight.status,
+                'aircraft': flight.aircraft.registration_number if flight.aircraft else "N/A"
+            })
+        return pd.DataFrame(data)
+    
+    flights_data = safe_query(get_flights_data, pd.DataFrame())
+    if not flights_data.empty:
+        st.dataframe(flights_data, use_container_width=True)
+    else:
+        st.info("No flight data available")
+
 st.divider()
 st.caption("Airport Operations Dashboard • Built with Streamlit & Django")
