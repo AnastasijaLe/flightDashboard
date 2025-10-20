@@ -7,7 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('polls', '0001_initial'),
+        ('flights', '0001_initial'),
     ]
 
     operations = [
@@ -42,13 +42,13 @@ class Migration(migrations.Migration):
                 ('registration_number', models.CharField(max_length=20, unique=True)),
                 ('capacity', models.PositiveIntegerField()),
                 ('manufacturer', models.CharField(max_length=100)),
-                ('airline', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='polls.airline')),
+                ('airline', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='flights.airline')),
             ],
         ),
         migrations.AddField(
             model_name='flight',
             name='aircraft',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='polls.aircraft'),
+            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='flights.aircraft'),
         ),
         migrations.CreateModel(
             name='Baggage',
@@ -56,7 +56,7 @@ class Migration(migrations.Migration):
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('weight', models.FloatField()),
                 ('status', models.CharField(default='Checked-in', max_length=50)),
-                ('ticket', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='polls.ticket')),
+                ('ticket', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='flights.ticket')),
             ],
         ),
         migrations.CreateModel(
@@ -66,8 +66,8 @@ class Migration(migrations.Migration):
                 ('status', models.CharField(default='Pending', max_length=50)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('total_price', models.DecimalField(decimal_places=2, max_digits=8)),
-                ('flight', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='polls.flight')),
-                ('passenger', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='polls.passenger')),
+                ('flight', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='flights.flight')),
+                ('passenger', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='flights.passenger')),
             ],
         ),
         migrations.CreateModel(
@@ -77,7 +77,7 @@ class Migration(migrations.Migration):
                 ('name', models.CharField(max_length=100)),
                 ('surname', models.CharField(max_length=100)),
                 ('role', models.CharField(max_length=100)),
-                ('airline', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='polls.airline')),
+                ('airline', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='flights.airline')),
             ],
         ),
         migrations.CreateModel(
@@ -87,7 +87,7 @@ class Migration(migrations.Migration):
                 ('reason', models.CharField(max_length=200)),
                 ('minutes_delayed', models.PositiveIntegerField()),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('flight', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='polls.flight')),
+                ('flight', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='flights.flight')),
             ],
         ),
         migrations.CreateModel(
@@ -97,7 +97,7 @@ class Migration(migrations.Migration):
                 ('code', models.CharField(max_length=20, unique=True)),
                 ('discount_percent', models.PositiveIntegerField()),
                 ('valid_until', models.DateField()),
-                ('airline', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='polls.airline')),
+                ('airline', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='flights.airline')),
             ],
         ),
         migrations.CreateModel(
@@ -105,8 +105,8 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('role_on_flight', models.CharField(max_length=100)),
-                ('crew_member', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='polls.crewmember')),
-                ('flight', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='polls.flight')),
+                ('crew_member', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='flights.crewmember')),
+                ('flight', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='flights.flight')),
             ],
         ),
         migrations.CreateModel(
@@ -115,7 +115,7 @@ class Migration(migrations.Migration):
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('gate_number', models.CharField(max_length=10)),
                 ('terminal', models.CharField(max_length=10)),
-                ('airport', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='polls.airport')),
+                ('airport', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='flights.airport')),
             ],
         ),
         migrations.CreateModel(
@@ -126,7 +126,7 @@ class Migration(migrations.Migration):
                 ('type', models.CharField(max_length=100)),
                 ('description', models.TextField(blank=True)),
                 ('status', models.CharField(default='Completed', max_length=50)),
-                ('aircraft', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='polls.aircraft')),
+                ('aircraft', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='flights.aircraft')),
             ],
         ),
         migrations.CreateModel(
@@ -137,7 +137,7 @@ class Migration(migrations.Migration):
                 ('method', models.CharField(max_length=50)),
                 ('payment_date', models.DateTimeField(auto_now_add=True)),
                 ('status', models.CharField(default='Completed', max_length=50)),
-                ('booking', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='polls.booking')),
+                ('booking', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='flights.booking')),
             ],
         ),
         migrations.CreateModel(
@@ -146,21 +146,21 @@ class Migration(migrations.Migration):
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('name', models.CharField(max_length=200)),
                 ('surname', models.CharField(max_length=200)),
-                ('airline', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='pilots', to='polls.airline')),
+                ('airline', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='pilots', to='flights.airline')),
             ],
         ),
         migrations.CreateModel(
             name='Route',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('arrival_airport', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='routes_to', to='polls.airport')),
-                ('departure_airport', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='routes_from', to='polls.airport')),
+                ('arrival_airport', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='routes_to', to='flights.airport')),
+                ('departure_airport', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='routes_from', to='flights.airport')),
             ],
         ),
         migrations.AddField(
             model_name='flight',
             name='route',
-            field=models.ForeignKey(default=1, on_delete=django.db.models.deletion.CASCADE, to='polls.route'),
+            field=models.ForeignKey(default=1, on_delete=django.db.models.deletion.CASCADE, to='flights.route'),
             preserve_default=False,
         ),
         migrations.CreateModel(
@@ -169,7 +169,7 @@ class Migration(migrations.Migration):
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('code', models.CharField(max_length=10)),
                 ('length_m', models.IntegerField()),
-                ('airport', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='polls.airport')),
+                ('airport', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='flights.airport')),
             ],
         ),
         migrations.CreateModel(
@@ -178,8 +178,8 @@ class Migration(migrations.Migration):
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('status', models.CharField(default='Cleared', max_length=50)),
                 ('checked_at', models.DateTimeField(auto_now_add=True)),
-                ('flight', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='polls.flight')),
-                ('passenger', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='polls.passenger')),
+                ('flight', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='flights.flight')),
+                ('passenger', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='flights.passenger')),
             ],
         ),
         migrations.CreateModel(
@@ -191,7 +191,7 @@ class Migration(migrations.Migration):
                 ('visibility', models.FloatField()),
                 ('wind_speed', models.FloatField()),
                 ('conditions', models.CharField(max_length=200)),
-                ('airport', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='polls.airport')),
+                ('airport', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='flights.airport')),
             ],
         ),
     ]
