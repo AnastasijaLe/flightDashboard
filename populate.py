@@ -9,7 +9,7 @@ import pytz
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'mysite.settings')
 django.setup()
 
-from polls.models import (
+from flights.models import (
     Airport, Route, Airline, Pilot, Flight, Passenger, Ticket,
     Aircraft, CrewMember, FlightCrew, Gate, Runway, Baggage,
     Booking, Payment, DiscountCode, Maintenance, Delay,
