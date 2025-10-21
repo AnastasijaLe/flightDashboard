@@ -211,65 +211,47 @@ def create_aircraft(airlines):
     return aircraft_list
 
 def create_flights(airlines, routes, aircraft_list):
-    
     flights = []
+    now = timezone.now()
+    
     for i in range(1000):
         airline = random.choice(airlines)
         route = random.choice(routes)
         aircraft = random.choice([a for a in aircraft_list if a.airline == airline] + [None])
         
-        base_time = fake.date_time_between(start_date='-5d', end_date='+5d')
+        base_time = fake.date_time_between(start_date='-5d', end_date='+5d', tzinfo=pytz.UTC)
         flight_duration = timedelta(hours=random.randint(1, 14))
         arrival_time = base_time + flight_duration
         
-        now = timezone.now()
-        
-        if base_time.tzinfo is None:
-            base_time = base_time.replace(tzinfo=pytz.UTC)
-        if arrival_time.tzinfo is None:
-            arrival_time = arrival_time.replace(tzinfo=pytz.UTC)
-        
         if arrival_time < now:
-            # 85% landed successfully, 10% cancelled, 5% delayed but completed
-            rand_val = random.random()
-            if rand_val < 0.85:
+            # past
+            if random.random() < 0.9:  # 90% landed successfully
                 status = "Landed"
-            elif rand_val < 0.95:
+            else:  # 10% cancelled
                 status = "Cancelled"
-            else:
-                status = "Landed" 
                 
         elif base_time > now + timedelta(hours=2):
-            # 90% scheduled, 8% cancelled, 2% delayed in advance
-            rand_val = random.random()
-            if rand_val < 0.90:
+            # future
+            if random.random() < 0.95:  # 95% scheduled
                 status = "Scheduled"
-            elif rand_val < 0.98:
+            else:  # 5% cancelled in advance
                 status = "Cancelled"
-            else:
-                status = "Delayed"
                 
         elif base_time > now:
-            # 60% boarding, 30% scheduled, 8% delayed, 2% cancelled
-            rand_val = random.random()
-            if rand_val < 0.60:
+            # upcoming
+            if random.random() < 0.7:  # 70% boarding
                 status = "Boarding"
-            elif rand_val < 0.90:
+            elif random.random() < 0.9:  # 20% scheduled
                 status = "Scheduled"
-            elif rand_val < 0.98:
+            else:  # 10% delayed
                 status = "Delayed"
-            else:
-                status = "Cancelled"
                 
         else:
-            # 70% in flight, 25% delayed, 5% other statuses
-            rand_val = random.random()
-            if rand_val < 0.70:
+            # current
+            if random.random() < 0.8:  # 80% in flight
                 status = "In Flight"
-            elif rand_val < 0.95:
+            else:  # 20% delayed
                 status = "Delayed"
-            else:
-                status = random.choice(["Boarding", "Scheduled"])
         
         flight = Flight.objects.create(
             flight_number=f"{airline.iata_code}{random.randint(100, 9999)}",
@@ -281,13 +263,13 @@ def create_flights(airlines, routes, aircraft_list):
             status=status
         )
         flights.append(flight)
-        print(f"Created flight: {flight} (Status: {status})")
+        print(f"Created flight: {flight} (Status: {status}, Dep: {base_time}, Arr: {arrival_time})")
     
     return flights
 
 def create_passengers():
     passengers = []
-    for _ in range(10000):
+    for _ in range(2500):
         passenger = Passenger.objects.create(
             first_name=fake.first_name(),
             last_name=fake.last_name(),
@@ -295,15 +277,13 @@ def create_passengers():
         )
         passengers.append(passenger)
         print(f"Created passenger: {passenger}")
-    
     return passengers
 
 def create_tickets(passengers, flights):
-
     seats = [f"{row}{seat}" for row in range(1, 33) for seat in ['A', 'B', 'C', 'D', 'E', 'F']]
     
     tickets = []
-    for _ in range(20000):
+    for _ in range(3000):
         passenger = random.choice(passengers)
         flight = random.choice(flights)
         
@@ -314,11 +294,9 @@ def create_tickets(passengers, flights):
         )
         tickets.append(ticket)
         print(f"Created ticket: {ticket}")
-    
     return tickets
 
 def create_crew_members(airlines):
-    
     roles = ["Flight Attendant", "Senior Flight Attendant", "Purser", "Chief Purser"]
     
     crew_members = []
@@ -331,26 +309,26 @@ def create_crew_members(airlines):
                 airline=airline
             )
             crew_members.append(crew_member)
-            print(f"Created crew member: {crew_member}")
-    
+        print(f"Created crew members for {airline.name}")
     return crew_members
 
 def create_flight_crews(flights, crew_members):
-    
     flight_crews = []
     for flight in flights:
         num_crew = random.randint(3, 8)
-        assigned_crew = random.sample(crew_members, min(num_crew, len(crew_members)))
-        
-        for crew_member in assigned_crew:
-            flight_crew = FlightCrew.objects.create(
-                flight=flight,
-                crew_member=crew_member,
-                role_on_flight=crew_member.role
-            )
-            flight_crews.append(flight_crew)
-            print(f"Assigned crew: {flight_crew}")
-    
+        # filter by airline
+        airline_crew = [cm for cm in crew_members if cm.airline == flight.airline]
+        if airline_crew:
+            assigned_crew = random.sample(airline_crew, min(num_crew, len(airline_crew)))
+            
+            for crew_member in assigned_crew:
+                flight_crew = FlightCrew.objects.create(
+                    flight=flight,
+                    crew_member=crew_member,
+                    role_on_flight=crew_member.role
+                )
+                flight_crews.append(flight_crew)
+            print(f"Assigned {len(assigned_crew)} crew members to {flight.flight_number}")
     return flight_crews
 
 def create_delays(flights):
@@ -358,82 +336,15 @@ def create_delays(flights):
     now = timezone.now()
     
     for flight in flights:
-        should_create_delay = False
-        reason = ""
-        minutes_delayed = 0
-        
         if flight.status == "Delayed":
-            should_create_delay = True
             minutes_delayed = random.randint(30, 180)
-            
-        elif flight.status == "Landed" and random.random() < 0.15:
-            should_create_delay = True
-            minutes_delayed = random.randint(15, 90)
-            
-        elif flight.status in ["In Flight", "Boarding"] and random.random() < 0.10:
-            should_create_delay = True
-            minutes_delayed = random.randint(10, 45)
-            
-        elif flight.status == "Scheduled" and random.random() < 0.05:
-            should_create_delay = True
-            minutes_delayed = random.randint(60, 240)
-            
-        if should_create_delay:
-            now = timezone.now()
-            
-            if flight.departure_time > now:
-                future_reasons = [
-                    "Airline Operational Issues",
-                    "Aircraft Maintenance",
-                    "Crew Scheduling Conflict",
-                    "Airline Management Decision",
-                    "Fleet Reassignment",
-                    "Commercial Reasons"
-                ]
-                reason = random.choice(future_reasons)
-                
-            elif flight.arrival_time < now:
-                past_reasons = [
-                    "Weather Conditions",
-                    "Air Traffic Control Restrictions",
-                    "Technical Issues with Aircraft",
-                    "Late Arriving Aircraft",
-                    "Passenger Issues",
-                    "Security Concerns",
-                    "Ground Handling Delays",
-                    "Fueling Problems",
-                    "Baggage Loading Delays",
-                    "Crew Late Arrival"
-                ]
-                reason = random.choice(past_reasons)
-                
-            else:
-                current_reasons = [
-                    "Weather Conditions",
-                    "Air Traffic Control",
-                    "Technical Check",
-                    "Late Boarding",
-                    "Ground Traffic",
-                    "De-icing Procedure",
-                    "Last-minute Maintenance"
-                ]
-                reason = random.choice(current_reasons)
-            
-            if flight.status == "Cancelled":
-                cancellation_reasons = [
-                    "Airline Operational Decision",
-                    "Weather Conditions",
-                    "Technical Fault",
-                    "Crew Unavailability",
-                    "Airport Closure",
-                    "Security Alert",
-                    "Commercial Reasons"
-                ]
-                reason = f"Cancellation: {random.choice(cancellation_reasons)}"
-                if flight.departure_time > now:
-                    minutes_delayed = random.randint(240, 1440)  
-                else:
-                    minutes_delayed = random.randint(0, 120) 
+            reason = random.choice([
+                "Weather Conditions",
+                "Air Traffic Control",
+                "Technical Issues",
+                "Late Arriving Aircraft",
+                "Crew Scheduling"
+            ])
             
             delay = Delay.objects.create(
                 flight=flight,
@@ -441,7 +352,7 @@ def create_delays(flights):
                 minutes_delayed=minutes_delayed
             )
             delays.append(delay)
-            print(f"Created delay: {delay} - {reason} ({minutes_delayed} minutes)")
+            print(f"Created delay: {delay}")
     
     return delays
 
