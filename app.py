@@ -32,7 +32,7 @@ try:
         WeatherReport, SecurityCheck
     )
     
-    from flight_utils import update_flight_statuses
+    from flight_utils import update_flight_statuses, update_discount_codes
     
     DJANGO_AVAILABLE = True
 except Exception as e:
@@ -61,7 +61,7 @@ if DJANGO_AVAILABLE:
 
 section = st.sidebar.selectbox(
     "Select Section:",
-    ["Overview", "Flights", "Passengers", "Aircraft", "Crew", "Operations", "Financial", "Weather"]
+    ["Overview", "Flights", "Passengers", "Aircraft", "Crew", "Financial", "Weather"]
 )
 
 # overview
@@ -474,7 +474,105 @@ elif section == "Crew":
             }
         )
     else:
-        st.info("No cabin crew flight data available")       
+        st.info("No cabin crew flight data available")
+
+# Financial Section
+elif section == "Financial":
+    st.header("💰 Financial Dashboard")
+    
+    def get_financial_data():
+        total_revenue = sum(float(payment.amount) for payment in Payment.objects.all())
+        total_bookings = Booking.objects.count()
+        active_discounts = DiscountCode.objects.filter(valid_until__gte=datetime.now().date()).count()
+        avg_booking_value = total_revenue / total_bookings if total_bookings > 0 else 0
+        return total_revenue, total_bookings, active_discounts, avg_booking_value
+    
+    revenue, bookings, discounts, avg_value = safe_query(get_financial_data, (0, 0, 0, 0))
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Total Revenue", f"${revenue:,.2f}")
+    with col2:
+        st.metric("Total Bookings", bookings)
+    with col3:
+        st.metric("Active Discounts", discounts)
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.subheader("💳 Recent Payments")
         
+        def get_recent_payments():
+            payments = Payment.objects.all().select_related('booking').order_by('-payment_date')[:15]
+            data = []
+            for payment in payments:
+                data.append({
+                    'Amount': f"${float(payment.amount):,.2f}",
+                    'Method': payment.method,
+                    'Status': payment.status,
+                    'Date': payment.payment_date.strftime("%Y-%m-%d"),
+                    'Booking ID': f"#{payment.booking.id}"
+                })
+            return pd.DataFrame(data)
+        
+        payments_data = safe_query(get_recent_payments, pd.DataFrame())
+        
+        if not payments_data.empty:
+            styled_payments = payments_data.style.set_properties(**{
+                'background-color': "#01040a",
+                'color': "#faf9f9",
+                'border-color': 'white'
+            })
+            
+            st.dataframe(
+                styled_payments,
+                use_container_width=True,
+                hide_index=True,
+                height=400
+            )
+        else:
+            st.info("No payment data available")
+    
+    with col2:
+        st.subheader("🎫 Active Discount Codes")
+        
+        def get_active_discounts():
+            discounts = DiscountCode.objects.filter(valid_until__gte=datetime.now().date())
+            data = []
+            for discount in discounts:
+                days_valid = (discount.valid_until - datetime.now().date()).days
+                data.append({
+                    'Code': discount.code,
+                    'Discount': f"{discount.discount_percent}%",
+                    'Valid Until': discount.valid_until.strftime("%Y-%m-%d"),
+                    'Days Left': days_valid,
+                    'Airline': discount.airline.name if discount.airline else "All"
+                })
+            return pd.DataFrame(data)
+        
+        discounts_data = safe_query(get_active_discounts, pd.DataFrame())
+        
+        if not discounts_data.empty:
+            def color_days_left(days):
+                if days < 7:
+                    return 'color: #EF5350'  
+                elif days < 30:
+                    return 'color: #FFA726' 
+                else:
+                    return 'color: #4CAF50' 
+            
+            styled_discounts = discounts_data.style.map(
+                color_days_left, subset=['Days Left']
+            )
+            
+            st.dataframe(
+                styled_discounts,
+                use_container_width=True,
+                hide_index=True,
+                height=400
+            )
+        else:
+            st.info("No active discount codes")
+          
 st.divider()
 st.caption("Airport Operations Dashboard • Built with Streamlit & Django")

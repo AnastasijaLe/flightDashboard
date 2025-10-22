@@ -1,6 +1,6 @@
 from django.utils import timezone
 from datetime import timedelta
-from flights.models import Flight
+from flights.models import Flight, DiscountCode
 
 def update_flight_statuses():
     now = timezone.now()
@@ -25,3 +25,16 @@ def update_flight_statuses():
             updated_count += 1
     
     return updated_count
+
+def update_discount_codes():
+    now = timezone.now().date()
+    expired_count = 0
+    
+    discount_codes = DiscountCode.objects.all()
+    
+    for discount_code in discount_codes:
+        if discount_code.valid_until < now:
+            discount_code.delete()
+            expired_count += 1
+    
+    return expired_count
