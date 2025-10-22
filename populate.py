@@ -354,7 +354,7 @@ def create_delays(flights):
     
     for flight in flights:
         if flight.status == "Delayed":
-            minutes_delayed = random.randint(30, 180)
+            minutes_delayed = random.randint(15, 600)
             reason = random.choice([
                 "Weather Conditions",
                 "Air Traffic Control",
@@ -467,6 +467,7 @@ def main():
     aircraft_list = create_aircraft(airlines)
     flights = create_flights(airlines, routes, aircraft_list)
     passengers = create_passengers()
+    delays = create_delays(flights)
     tickets = create_tickets(passengers, flights)
     crew_members = create_crew_members(airlines)
     flight_crews = create_flight_crews(flights, crew_members, pilots)

@@ -1,28 +1,52 @@
 from django.utils import timezone
 from datetime import timedelta
-from flights.models import Flight, DiscountCode
+from flights.models import Flight, DiscountCode, Delay
 
 def update_flight_statuses():
     now = timezone.now()
     updated_count = 0
     
-    flights = Flight.objects.all()
+    flights = Flight.objects.exclude(status__in=["Cancelled", "Landed"])
+    
     for flight in flights:
         old_status = flight.status
+        new_status = old_status 
         
-        # Determine new status based on current time
-        if flight.arrival_time < now and flight.status != "Landed" and flight.status != "Cancelled":
-            flight.status = "Landed"
-        elif flight.departure_time < now < flight.arrival_time and flight.status not in ["In Flight", "Landed", "Cancelled"]:
-            flight.status = "In Flight"
-        elif flight.departure_time > now + timedelta(hours=2) and flight.status not in ["Scheduled", "Cancelled"]:
-            flight.status = "Scheduled"
-        elif now <= flight.departure_time <= now + timedelta(hours=2) and flight.status not in ["Boarding", "Delayed", "Cancelled"]:
-            flight.status = "Boarding"
+        if old_status in ["Cancelled", "Landed"]:
+            continue
+            
+        latest_delay = Delay.objects.filter(flight=flight).order_by('-updated_at').first()
+        if latest_delay and latest_delay.minutes_delayed > 600:
+            new_status = "Cancelled"
         
-        if flight.status != old_status:
+        elif flight.arrival_time < now:
+            new_status = "Landed"
+        
+        elif flight.departure_time < now:
+            if old_status != "Delayed":
+                new_status = "In Flight"
+        
+        else:
+            is_delayed = Delay.objects.filter(flight=flight, updated_at__date=now.date()).exists()
+            time_until_departure = flight.departure_time - now
+            
+            if is_delayed:
+                new_status = "Delayed"
+            elif time_until_departure <= timedelta(minutes=45) and old_status != "Scheduled":
+                new_status = "Boarding"
+            else:
+                new_status = "Scheduled"
+        
+        if new_status != old_status:
+            if old_status == "Boarding" and new_status == "Scheduled":
+                continue
+            if old_status == "Delayed" and new_status in ["Scheduled", "Boarding"]:
+                continue
+                
+            flight.status = new_status
             flight.save()
             updated_count += 1
+            print(f"Updated flight {flight.flight_number} from {old_status} to {new_status}")
     
     return updated_count
 

@@ -55,9 +55,10 @@ if DJANGO_AVAILABLE:
 else:
     st.sidebar.warning("⚠️ Database Not Available")
 
-# update flight statuses
+# update flight statuses and discount
 if DJANGO_AVAILABLE:
     updated_count = update_flight_statuses()
+    update_discount_count = update_discount_codes()
 
 section = st.sidebar.selectbox(
     "Select Section:",
@@ -179,7 +180,7 @@ elif section == "Passengers":
             current_flights = Flight.objects.filter(
                 departure_time__lte=now,
                 arrival_time__gte=now,
-                status__in=["In Flight", "Delayed"]
+                status__in=["In Flight"]
             )
             tickets = Ticket.objects.filter(flight__in=current_flights)
             return tickets.values('passenger').distinct().count()
@@ -207,7 +208,7 @@ elif section == "Passengers":
         current_flights = Flight.objects.filter(
             departure_time__lte=now,
             arrival_time__gte=now,
-            status__in=["In Flight", "Delayed"]
+            status__in=["In Flight"]
         ).select_related('route', 'route__departure_airport', 'route__arrival_airport')
         
         data = []
@@ -274,6 +275,68 @@ elif section == "Passengers":
     else:
         st.info("No passenger data available")
 
+    # security
+    st.subheader("🔒 Security Check Status")
+
+    def get_security_check_data():
+        security_checks = SecurityCheck.objects.select_related('passenger', 'flight')
+        
+        status_counts = security_checks.values('status').annotate(
+            count=models.Count('id')
+        ).order_by('status')
+        
+        detailed_data = []
+        for check in security_checks[:10]:  
+            detailed_data.append({
+                'passenger': f"{check.passenger.first_name} {check.passenger.last_name}",
+                'flight': check.flight.flight_number,
+                'status': check.status,
+                'checked_at': check.checked_at.strftime('%Y-%m-%d %H:%M')
+            })
+        
+        return status_counts, pd.DataFrame(detailed_data)
+
+    security_status, security_details = safe_query(
+        lambda: get_security_check_data(), 
+        ([], pd.DataFrame())
+    )
+
+    if security_status:
+        status_df = pd.DataFrame(list(security_status))
+        if not status_df.empty:
+            col1, col2 = st.columns([2, 1])
+            
+            with col1:
+                fig = px.pie(
+                    status_df, 
+                    values='count', 
+                    names='status',
+                    title="Security Check Status Distribution (All Time)",
+                    color='status',
+                    color_discrete_map={
+                        'Cleared': '#00ff00',
+                        'Pending': '#ffff00', 
+                        'Additional Screening Required': '#ff0000'
+                    }
+                )
+                fig.update_traces(textposition='inside', textinfo='percent+label')
+                st.plotly_chart(fig, use_container_width=True)
+            
+            with col2:
+                st.write("**Status Summary**")
+                total_checks = sum(status['count'] for status in security_status)
+                st.metric("Total Security Checks", total_checks)
+                st.write("---")
+                for status in security_status:
+                    color = "🟢" if status['status'] == "Cleared" else "🟡" if status['status'] == "Pending" else "🔴"
+                    st.write(f"{color} {status['status']}: {status['count']}")
+        
+        if not security_details.empty:
+            with st.expander("📋 Show Recent Security Checks"):
+                st.dataframe(security_details, use_container_width=True)
+    else:
+        st.info("No security check data available")
+        
     # baggage info
     st.subheader("💼 Baggage Tracking - Current Flights")
     
@@ -573,6 +636,123 @@ elif section == "Financial":
             )
         else:
             st.info("No active discount codes")
+
+# Weather Section
+elif section == "Weather":
+    st.header("🌤️ Weather & Delays")
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        total_delays = safe_query(lambda: Delay.objects.count(), 0)
+        st.metric("Total Delays", total_delays)
+    with col2:
+        avg_delay = safe_query(lambda: Delay.objects.aggregate(avg=models.Avg('minutes_delayed'))['avg'] or 0, 0)
+        st.metric("Avg Delay (min)", f"{avg_delay:.1f}")
+    with col3:
+        st.metric("Weather Reports", safe_query(lambda: WeatherReport.objects.count(), 0))
+    
+    
+    st.subheader("🌡️ Current Weather Conditions")
+    
+    def get_current_weather():
+        from django.db.models import Max
+        latest_reports = WeatherReport.objects.values('airport').annotate(
+            latest_time=Max('timestamp')
+        )
+        
+        current_weather = []
+        for report in latest_reports:
+            weather = WeatherReport.objects.filter(
+                airport_id=report['airport'],
+                timestamp=report['latest_time']
+            ).select_related('airport').first()
+            if weather:
+                current_weather.append({
+                    'City': weather.airport.city,
+                    'Temperature': f"{weather.temperature}°C",
+                    'Conditions': weather.conditions,
+                    'Wind Speed': f"{weather.wind_speed} km/h",
+                    'Last Updated': weather.timestamp.strftime("%H:%M")
+                })
+        return pd.DataFrame(current_weather)
+    
+    current_weather_data = safe_query(get_current_weather, pd.DataFrame())
+    
+    if not current_weather_data.empty:
+        def color_conditions(condition):
+            if any(word in condition.lower() for word in ['clear', 'sunny']):
+                return 'background-color: #4CAF50; color: white'  # Green
+            elif any(word in condition.lower() for word in ['cloudy', 'partly']):
+                return 'background-color: #FFA726; color: white'  # Orange
+            elif any(word in condition.lower() for word in ['rain', 'snow', 'storm', 'fog']):
+                return 'background-color: #EF5350; color: white'  # Red
+            else:
+                return 'background-color: #78909C; color: white'  # Gray
+        
+        styled_weather = current_weather_data.style.map(
+            color_conditions, subset=['Conditions']
+        )
+        
+        st.dataframe(
+            styled_weather,
+            use_container_width=True,
+            hide_index=True,
+            height=300
+        )
+    else:
+        st.info("No current weather data available")
+    
+    if total_delays > 0:
+        st.subheader("📊 Delay Analysis")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            def get_delay_reasons():
+                reasons = Delay.objects.values('reason').annotate(
+                    count=models.Count('id'),
+                    avg_duration=models.Avg('minutes_delayed')
+                ).order_by('-count')
+                
+                data = []
+                for reason in reasons:
+                    data.append({
+                        'Reason': reason['reason'],
+                        'Count': reason['count'],
+                        'Avg Duration': f"{reason['avg_duration']:.1f} min"
+                    })
+                return pd.DataFrame(data)
+            
+            delay_reasons = safe_query(get_delay_reasons, pd.DataFrame())
+            
+            if not delay_reasons.empty:
+                fig = px.pie(
+                    delay_reasons,
+                    values='Count',
+                    names='Reason',
+                    title="Delay Reasons Distribution",
+                    color_discrete_sequence=px.colors.qualitative.Set3
+                )
+                fig.update_layout(height=300)
+                st.plotly_chart(fig, use_container_width=True)
+        
+        with col2:
+            st.write("**Recent Delays**")
+            def get_recent_delays():
+                delays = Delay.objects.all().select_related('flight', 'flight__route').order_by('-updated_at')[:10]
+                data = []
+                for delay in delays:
+                    data.append({
+                        'Flight': delay.flight.flight_number,
+                        'Route': f"{delay.flight.route.departure_airport.code} → {delay.flight.route.arrival_airport.code}",
+                        'Reason': delay.reason,
+                        'Duration': f"{delay.minutes_delayed} min",
+                    })
+                return pd.DataFrame(data)
+            
+            recent_delays = safe_query(get_recent_delays, pd.DataFrame())
+            if not recent_delays.empty:
+                st.dataframe(recent_delays, use_container_width=True, hide_index=True)    
           
 st.divider()
 st.caption("Airport Operations Dashboard • Built with Streamlit & Django")
