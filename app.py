@@ -305,5 +305,52 @@ elif section == "Passengers":
     else:
         st.info("No baggage data for current flights")
 
+# Aircraft Section
+elif section == "Aircraft":
+    st.header("✈️ Aircraft & Maintenance")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("Total Aircraft", safe_query(lambda: Aircraft.objects.count(), 0))
+    with col2:
+        st.metric("In Maintenance", safe_query(lambda: Maintenance.objects.filter(status="In Progress").count(), 0))
+    with col3:
+        st.metric("Gates", safe_query(lambda: Gate.objects.count(), 0))
+    with col4:
+        st.metric("Runways", safe_query(lambda: Runway.objects.count(), 0))
+    
+    def get_aircraft_data():
+        aircrafts = Aircraft.objects.all()
+        data = []
+        for aircraft in aircrafts:
+            data.append({
+                'registration': aircraft.registration_number,
+                'model': aircraft.model,
+                'airline': aircraft.airline.name,
+                'capacity': aircraft.capacity
+            })
+        return pd.DataFrame(data)
+    
+    aircraft_data = safe_query(get_aircraft_data, pd.DataFrame())
+    if not aircraft_data.empty:
+        st.dataframe(aircraft_data, use_container_width=True)
+    
+    st.subheader("Maintenance Records")
+    def get_maintenance_data():
+        maintenance = Maintenance.objects.all().select_related('aircraft')[:20]
+        data = []
+        for maint in maintenance:
+            data.append({
+                'aircraft': maint.aircraft.registration_number,
+                'date': maint.date,
+                'type': maint.type,
+                'status': maint.status
+            })
+        return pd.DataFrame(data)
+    
+    maintenance_data = safe_query(get_maintenance_data, pd.DataFrame())
+    if not maintenance_data.empty:
+        st.dataframe(maintenance_data, use_container_width=True)        
+        
 st.divider()
 st.caption("Airport Operations Dashboard • Built with Streamlit & Django")
