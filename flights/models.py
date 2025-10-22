@@ -93,11 +93,15 @@ class CrewMember(models.Model):
 
 class FlightCrew(models.Model):
     flight = models.ForeignKey(Flight, on_delete=models.CASCADE)
-    crew_member = models.ForeignKey(CrewMember, on_delete=models.CASCADE)
+    crew_member = models.ForeignKey(CrewMember, on_delete=models.CASCADE, null=True, blank=True)
+    pilot = models.ForeignKey(Pilot, on_delete=models.CASCADE, null=True, blank=True)
     role_on_flight = models.CharField(max_length=100)
 
     def __str__(self):
-        return f"{self.crew_member} on {self.flight}"
+        if self.pilot:
+            return f"{self.pilot} on {self.flight} as {self.role_on_flight}"
+        else:
+            return f"{self.crew_member} on {self.flight} as {self.role_on_flight}"
 
 
 class Gate(models.Model):

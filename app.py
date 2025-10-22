@@ -350,7 +350,131 @@ elif section == "Aircraft":
     
     maintenance_data = safe_query(get_maintenance_data, pd.DataFrame())
     if not maintenance_data.empty:
-        st.dataframe(maintenance_data, use_container_width=True)        
+        st.dataframe(maintenance_data, use_container_width=True)   
+
+# Crew Section
+elif section == "Crew":
+    st.header("👨‍✈️ Crew Management")
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Total Crew", safe_query(lambda: CrewMember.objects.count(), 0))
+    with col2:
+        st.metric("Pilots", safe_query(lambda: Pilot.objects.count(), 0))
+    with col3:
+        st.metric("Active Assignments", safe_query(lambda: FlightCrew.objects.count(), 0))
+    
+    st.subheader("🏆 Top 10 Pilots by Flight Hours")
+    
+    def get_top_pilots_by_hours():
+        pilots_data = []
+        for pilot in Pilot.objects.all():
+            pilot_assignments = FlightCrew.objects.filter(
+                pilot=pilot
+            ).select_related('flight', 'flight__route')
+            
+            total_hours = 0
+            flight_count = 0
+            
+            for assignment in pilot_assignments:
+                flight = assignment.flight
+                if flight and flight.departure_time and flight.arrival_time:
+                    duration = flight.arrival_time - flight.departure_time
+                    hours = duration.total_seconds() / 3600
+                    total_hours += hours
+                    flight_count += 1
+            
+            if flight_count > 0:
+                pilots_data.append({
+                    'Pilot': f"{pilot.name} {pilot.surname}",
+                    'Airline': pilot.airline.name,
+                    'Total Hours': round(total_hours, 1),
+                    'Flights': flight_count,
+                    'Avg Hours per Flight': round(total_hours / flight_count, 1)
+                })
+        
+        pilots_data.sort(key=lambda x: x['Total Hours'], reverse=True)
+        return pd.DataFrame(pilots_data[:10])
+    
+    top_pilots_data = safe_query(get_top_pilots_by_hours, pd.DataFrame())
+    
+    if not top_pilots_data.empty:
+        fig = px.bar(
+            top_pilots_data,
+            x='Total Hours',
+            y='Pilot',
+            orientation='h',
+            title="Top Pilots by Flight Hours",
+            labels={'Total Hours': 'Total Flight Hours', 'Pilot': 'Pilot'},
+            color='Total Hours',
+            color_continuous_scale='viridis',
+            hover_data=['Airline', 'Flights', 'Avg Hours per Flight']
+        )
+        fig.update_layout(showlegend=False, height=400)
+        st.plotly_chart(fig, use_container_width=True)
+        
+        st.dataframe(
+            top_pilots_data,
+            use_container_width=True,
+            column_config={
+                'Pilot': st.column_config.TextColumn('Pilot Name'),
+                'Airline': st.column_config.TextColumn('Airline'),
+                'Total Hours': st.column_config.NumberColumn('Total Hours', format='%.1f h'),
+                'Flights': st.column_config.NumberColumn('Flights Count'),
+                'Avg Hours per Flight': st.column_config.NumberColumn('Avg Hours/Flight', format='%.1f h')
+            }
+        )
+    else:
+        st.info("No pilot flight data available")
+    
+    st.subheader("👩‍✈️ Top 10 Cabin Crew by Number of Flights")
+    
+    def get_top_cabin_crew():
+        from django.db.models import Count
+        
+        cabin_crew_data = CrewMember.objects.annotate(
+            flight_count=Count('flightcrew')
+        ).order_by('-flight_count')[:10]
+        
+        data = []
+        for crew in cabin_crew_data:
+            data.append({
+                'crew_member': f"{crew.name} {crew.surname}",
+                'role': crew.role,
+                'airline': crew.airline.name,
+                'flight_count': crew.flight_count
+            })
+        
+        return pd.DataFrame(data)
+    
+    top_cabin_crew_data = safe_query(get_top_cabin_crew, pd.DataFrame())
+    
+    if not top_cabin_crew_data.empty:
+        fig = px.bar(
+            top_cabin_crew_data,
+            x='flight_count',
+            y='crew_member',
+            orientation='h',
+            title="Top Cabin Crew by Number of Flights",
+            labels={'flight_count': 'Number of Flights', 'crew_member': 'Crew Member'},
+            color='flight_count',
+            color_continuous_scale='plasma'
+        )
+        fig.update_layout(showlegend=False, height=400)
+        st.plotly_chart(fig, use_container_width=True)
+        
+        st.dataframe(
+            top_cabin_crew_data[['crew_member', 'role', 'airline', 'flight_count']],
+            use_container_width=True,
+            column_config={
+                'crew_member': 'Crew Member',
+                'role': 'Role',
+                'airline': 'Airline',
+                'flight_count': 'Flights Count'
+            }
+        )
+    else:
+        st.info("No cabin crew flight data available")       
         
 st.divider()
 st.caption("Airport Operations Dashboard • Built with Streamlit & Django")

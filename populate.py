@@ -312,11 +312,27 @@ def create_crew_members(airlines):
         print(f"Created crew members for {airline.name}")
     return crew_members
 
-def create_flight_crews(flights, crew_members):
+def create_flight_crews(flights, crew_members, pilots):
     flight_crews = []
+    pilot_roles = ["Captain", "First Officer"]
+    
     for flight in flights:
-        num_crew = random.randint(3, 8)
-        # filter by airline
+        airline_pilots = [p for p in pilots if p.airline == flight.airline]
+        if airline_pilots:
+            num_pilots = 2
+            assigned_pilots = random.sample(airline_pilots, min(num_pilots, len(airline_pilots)))
+            
+            for i, pilot in enumerate(assigned_pilots):
+                role = "Captain" if i == 0 else "First Officer"
+                flight_crew = FlightCrew.objects.create(
+                    flight=flight,
+                    pilot=pilot,
+                    role_on_flight=role
+                )
+                flight_crews.append(flight_crew)
+                print(f"Assigned pilot {pilot} to {flight.flight_number} as {role}")
+        
+        num_crew = random.randint(3, 6)
         airline_crew = [cm for cm in crew_members if cm.airline == flight.airline]
         if airline_crew:
             assigned_crew = random.sample(airline_crew, min(num_crew, len(airline_crew)))
@@ -328,7 +344,8 @@ def create_flight_crews(flights, crew_members):
                     role_on_flight=crew_member.role
                 )
                 flight_crews.append(flight_crew)
-            print(f"Assigned {len(assigned_crew)} crew members to {flight.flight_number}")
+            print(f"Assigned {len(assigned_crew)} cabin crew members to {flight.flight_number}")
+    
     return flight_crews
 
 def create_delays(flights):
@@ -452,7 +469,7 @@ def main():
     passengers = create_passengers()
     tickets = create_tickets(passengers, flights)
     crew_members = create_crew_members(airlines)
-    flight_crews = create_flight_crews(flights, crew_members)
+    flight_crews = create_flight_crews(flights, crew_members, pilots)
     
     create_additional_data(airports, flights, tickets, passengers)
     
