@@ -17,11 +17,11 @@ Programmatūra vizualizē datus izmantojot vairākas bibliotēkas. Programmatūr
 Dažās kategorijās ir papildus interaktivitāte - iespējams sašaurināt vēlamo datu loku sīkāk.
 ![An interactive calendar with an option to choose a date](https://media.discordapp.net/attachments/1159108472076513323/1435248430778810509/image.png?ex=690b46c3&is=6909f543&hm=4c331da1ec6d1ef80ccc95ccc5f11610b9fe2c5e54bef946517db73b43ff0f59&=&format=webp&quality=lossless)
 
-##Arhitektūra
+## Arhitektūra
 Flight Dashboard balstās uz datubāzes, kuru var rediģēt izmantojot django, vizuālie elementi tiek apstrādāti ar streamlit un citām python bibliotēkām.
 ![alt](https://media.discordapp.net/attachments/1427226047841308682/1429808958587142205/myapp.png?ex=690b435c&is=6909f1dc&hm=246fb6679970307842523c106b19b2520ab2df419205472e5fb083d6fed03474&=&format=webp&quality=lossless&width=1620&height=836)
 
-##Uzlabojumi nākotnei
+## Uzlabojumi nākotnei
 - reālu datu izmantošana
 - papildus kategorijas
 
